@@ -29,6 +29,8 @@ type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 // 0x1/ (hypersdk-height)
 // 0x2/ (hypersdk-timestamp)
 // 0x3/ (hypersdk-fee)
+// 0x4/ (hypersdk-asset)
+//   -> [assetID] => owner
 
 const (
 	// Active state
@@ -40,7 +42,7 @@ const (
 )
 
 const BalanceChunks uint16 = 1
-const WillChunks uint16 = 1
+const AssetChunks uint16 = 1
 
 var (
 	heightKey    = []byte{heightPrefix}
@@ -48,14 +50,14 @@ var (
 	feeKey       = []byte{feePrefix}
 )
 
-// we're using codec.Address as the key for assets but might want to switch to an
+// we're using ids.ID as the key for assets but might want to switch to an
 // specific data type
 // [assetPrefix] + [assetID]
 func AssetKey(assetID ids.ID) (k []byte) {
 	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)
 	k[0] = assetPrefix
 	copy(k[1:], assetID[:])
-	binary.BigEndian.PutUint16(k[1+ids.IDLen:], WillChunks)
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetChunks)
 	return
 }
 

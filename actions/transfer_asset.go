@@ -45,7 +45,6 @@ func (a *AssetTransfer) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(a.Asset)): state.All,
 	}
-	// Here we are not interested on keys from the actor
 }
 
 var _ codec.Typed = (*AssetTransferResult)(nil)
