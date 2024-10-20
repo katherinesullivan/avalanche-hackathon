@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanchego/database"
+	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
@@ -35,15 +36,98 @@ const (
 	heightPrefix    = 0x1
 	timestampPrefix = 0x2
 	feePrefix       = 0x3
+	assetPrefix     = 0x4
 )
 
 const BalanceChunks uint16 = 1
+const WillChunks uint16 = 1
 
 var (
 	heightKey    = []byte{heightPrefix}
 	timestampKey = []byte{timestampPrefix}
 	feeKey       = []byte{feePrefix}
 )
+
+// we're using codec.Address as the key for assets but might want to switch to an
+// specific data type
+// [assetPrefix] + [assetID]
+func AssetKey(assetID ids.ID) (k []byte) {
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)
+	k[0] = assetPrefix
+	copy(k[1:], assetID[:])
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], WillChunks)
+	return
+}
+
+func GetAssetOwner(
+	ctx context.Context,
+	im state.Immutable,
+	assetID ids.ID,
+) (codec.Address, error) {
+	_, owner, _, err := getAssetOwner(ctx, im, assetID)
+	return owner, err
+}
+
+func getAssetOwner(
+	ctx context.Context,
+	im state.Immutable,
+	assetID ids.ID,
+) ([]byte, codec.Address, bool, error) {
+	k := AssetKey(assetID)
+	owner, exists, err := innerGetAssetOwner(im.GetValue(ctx, k))
+	return k, owner, exists, err
+}
+
+func innerGetAssetOwner(
+	v []byte,
+	err error,
+) (codec.Address, bool, error) {
+	if errors.Is(err, database.ErrNotFound) {
+		return codec.EmptyAddress, false, nil
+	}
+	if err != nil {
+		return codec.EmptyAddress, false, err
+	}
+	val, err := codec.ToAddress(v)
+	if err != nil {
+		return codec.EmptyAddress, false, err
+	}
+	return val, true, nil
+}
+
+func GetAssetOwnerFromState(
+	ctx context.Context,
+	f ReadState,
+	assetID ids.ID,
+) (codec.Address, error) {
+	k := AssetKey(assetID)
+	values, errs := f(ctx, [][]byte{k})
+	owner, _, err := innerGetAssetOwner(values[0], errs[0])
+	return owner, err
+}
+
+func SetAssetOwner(
+	ctx context.Context,
+	mu state.Mutable,
+	key []byte,
+	newowner codec.Address,
+) error {
+	byteNewOwner, err := newowner.MarshalText()
+	if err != nil {
+		return mu.Insert(ctx, key, byteNewOwner)
+	}
+	return err
+}
+
+func ChangeAssetOwner(
+	ctx context.Context,
+	mu state.Mutable,
+	assetID ids.ID,
+	newOwner codec.Address,
+) error {
+	k := AssetKey(assetID)
+	return SetAssetOwner(ctx, mu, k, newOwner)
+}
 
 // [balancePrefix] + [address]
 func BalanceKey(addr codec.Address) (k []byte) {
