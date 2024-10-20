@@ -265,7 +265,7 @@ Chunks are given in batches of 64 bytes, so a chunk size of 1 means the value at
 Declaring AssetChunks as 1, means we're committing to always store a value of less than 64 bytes (which makes sense since we're storing addresses as values).
 
 
-**Technical note**: Why would I want to store my asset data like this? This precise example comes from the motivation of tokenizing real world assets. See this document for more information.
+**Technical note**: Why would I want to store my asset data like this? This precise example comes from the motivation of tokenizing unique real world assets, such as real state. See this document for more information.
 
 #### Step 3: Handling this new partition
 
